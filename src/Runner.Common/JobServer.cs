@@ -16,7 +16,7 @@ using GitHub.Services.OAuth;
 using GitHub.Services.Results.Client;
 using GitHub.Services.WebApi;
 using GitHub.Services.WebApi.Utilities.Internal;
-
+using System.Diagnostics;
 namespace GitHub.Runner.Common
 {
     [ServiceLocator(Default = typeof(JobServer))]
@@ -226,7 +226,16 @@ namespace GitHub.Runner.Common
             return _taskClient.AppendLogContentAsync(scopeIdentifier, hubName, planId, logId, uploadStream, cancellationToken: cancellationToken);
         }
 
-        public async Task AppendTimelineRecordFeedAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, Guid timelineRecordId, Guid stepId, IList<string> lines, long? startLine, CancellationToken cancellationToken)
+        public async Task AppendTimelineRecordFeedAsync(
+            Guid scopeIdentifier,
+            string hubName,
+            Guid planId,
+            Guid timelineId,
+            Guid timelineRecordId,
+            Guid stepId,
+            IList<string> lines,
+            long? startLine,
+            CancellationToken cancellationToken)
         {
             CheckConnection();
             var pushedLinesViaWebsocket = false;
@@ -239,17 +248,26 @@ namespace GitHub.Runner.Common
             // ...in other words, if websocket client is null, we will skip sending to websocket and just use rest api calls to send data
             if (_websocketClient != null)
             {
-                var linesWrapper = startLine.HasValue ? new TimelineRecordFeedLinesWrapper(stepId, lines, startLine.Value) : new TimelineRecordFeedLinesWrapper(stepId, lines);
+                // Measure message creation time
+                Stopwatch swCreate = Stopwatch.StartNew();
+                var linesWrapper = startLine.HasValue
+                    ? new TimelineRecordFeedLinesWrapper(stepId, lines, startLine.Value)
+                    : new TimelineRecordFeedLinesWrapper(stepId, lines);
                 var jsonData = StringUtil.ConvertToJson(linesWrapper);
+                swCreate.Stop();
+                Trace.Info($"Message creation took: {swCreate.ElapsedMilliseconds} ms.");
+
+                // Measure WebSocket streaming time
+                Stopwatch swStream = Stopwatch.StartNew();
                 try
                 {
                     totalBatchedLinesAttemptedByWebsocket++;
                     var jsonDataBytes = Encoding.UTF8.GetBytes(jsonData);
                     // break the message into chunks of 1024 bytes
-                    for (var i = 0; i < jsonDataBytes.Length; i += 1 * 1024)
+                    for (var i = 0; i < jsonDataBytes.Length; i += 1024)
                     {
-                        var lastChunk = i + (1 * 1024) >= jsonDataBytes.Length;
-                        var chunk = new ArraySegment<byte>(jsonDataBytes, i, Math.Min(1 * 1024, jsonDataBytes.Length - i));
+                        var lastChunk = i + 1024 >= jsonDataBytes.Length;
+                        var chunk = new ArraySegment<byte>(jsonDataBytes, i, Math.Min(1024, jsonDataBytes.Length - i));
                         await _websocketClient.SendAsync(chunk, WebSocketMessageType.Text, endOfMessage: lastChunk, cancellationToken);
                     }
 
@@ -280,17 +298,23 @@ namespace GitHub.Runner.Common
                         InitializeWebsocketClient(delay);
                     }
                 }
+                swStream.Stop();
+                Trace.Info($"WebSocket streaming took: {swStream.ElapsedMilliseconds} ms.");
             }
 
             if (!pushedLinesViaWebsocket && !cancellationToken.IsCancellationRequested)
             {
                 if (startLine.HasValue)
                 {
-                    await _taskClient.AppendTimelineRecordFeedAsync(scopeIdentifier, hubName, planId, timelineId, timelineRecordId, stepId, lines, startLine.Value, cancellationToken: cancellationToken);
+                    await _taskClient.AppendTimelineRecordFeedAsync(
+                        scopeIdentifier, hubName, planId, timelineId, timelineRecordId,
+                        stepId, lines, startLine.Value, cancellationToken: cancellationToken);
                 }
                 else
                 {
-                    await _taskClient.AppendTimelineRecordFeedAsync(scopeIdentifier, hubName, planId, timelineId, timelineRecordId, stepId, lines, cancellationToken: cancellationToken);
+                    await _taskClient.AppendTimelineRecordFeedAsync(
+                        scopeIdentifier, hubName, planId, timelineId, timelineRecordId,
+                        stepId, lines, cancellationToken: cancellationToken);
                 }
             }
         }
