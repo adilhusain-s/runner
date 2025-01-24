@@ -409,6 +409,7 @@ namespace GitHub.Runner.Common
                                 // Give at most 60s for each request.
                                 using (var timeoutTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(60)))
                                 {
+                                    _resultsServiceOnly = true;
                                     if (_resultsServiceOnly)
                                     {
                                         await _resultsServer.AppendLiveConsoleFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber, timeoutTokenSource.Token);
