@@ -91,7 +91,7 @@ namespace GitHub.Runner.Common
         private int _webConsoleLineAggressiveDequeueCount = 0;
         private const int _webConsoleLineAggressiveDequeueLimit = 4 * 60;
         private const int _webConsoleLineQueueSizeLimit = 1024;
-        private bool _webConsoleLineAggressiveDequeue = true;
+        private bool _webConsoleLineAggressiveDequeue = false;
         private bool _firstConsoleOutputs = true;
 
         private bool _resultsClientInitiated = false;
