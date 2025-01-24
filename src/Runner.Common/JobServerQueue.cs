@@ -401,15 +401,17 @@ namespace GitHub.Runner.Common
                             batchedLines = batchedLines.TakeLast(2).ToList();
                         }
 
+
                         int errorCount = 0;
                         foreach (var batch in batchedLines)
                         {
+                            var stopwatch = Stopwatch.StartNew(); // Start the stopwatch
+
                             try
                             {
                                 // Give at most 60s for each request.
                                 using (var timeoutTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(60)))
                                 {
-                                    _resultsServiceOnly = true;
                                     if (_resultsServiceOnly)
                                     {
                                         await _resultsServer.AppendLiveConsoleFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber, timeoutTokenSource.Token);
@@ -432,6 +434,9 @@ namespace GitHub.Runner.Common
                                 Trace.Error(ex);
                                 errorCount++;
                             }
+
+                            stopwatch.Stop(); // Stop the stopwatch after the block
+                            Trace.Info($"Job server block for batch took {stopwatch.ElapsedMilliseconds} ms.");
                         }
 
                         Trace.Info("Try to append {0} batches web console lines for record '{2}', success rate: {1}/{0}.", batchedLines.Count, batchedLines.Count - errorCount, stepRecordId);
@@ -548,12 +553,15 @@ namespace GitHub.Runner.Common
                     int errorCount = 0;
                     foreach (var file in filesToUpload)
                     {
+                        var stopwatch = Stopwatch.StartNew(); // Start the stopwatch for each file upload
+
                         try
                         {
                             if (_enableTelemetry)
                             {
                                 _resultsUploadTimer.Start();
                             }
+
                             if (String.Equals(file.Type, ChecksAttachmentType.StepSummary, StringComparison.OrdinalIgnoreCase))
                             {
                                 await UploadSummaryFile(file);
@@ -595,6 +603,9 @@ namespace GitHub.Runner.Common
                             {
                                 _resultsUploadTimer.Stop();
                             }
+
+                            stopwatch.Stop(); // Stop the stopwatch after the upload operation
+                            Trace.Info($"File upload for {file.Type} took {stopwatch.ElapsedMilliseconds} ms.");
                         }
                     }
 
