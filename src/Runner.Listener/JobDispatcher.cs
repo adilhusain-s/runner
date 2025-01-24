@@ -1069,19 +1069,31 @@ namespace GitHub.Runner.Listener
                             // Need to post timeline record updates to reflect the log creation
                             updatedRecords.Add(record.Clone());
                         }
+                        using System.Diagnostics;
+
+                        // Create a Stopwatch instance to track the time taken for each iteration
+                        Stopwatch stopwatch = new Stopwatch();
 
                         for (var i = 1; i <= pages.Value.Count; i++)
                         {
                             var logFile = pages.Value[i];
+
+                            // Start the stopwatch for this iteration
+                            stopwatch.Restart();
+
                             // Upload the contents
                             using (FileStream fs = File.Open(logFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
                             {
                                 var logUploaded = await jobServer.AppendLogContentAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, record.Log.Id, fs, default(CancellationToken));
                             }
 
-                            Trace.Info($"Uploaded unfinished log '{logFile}' for current job.");
+                            // Log the time taken for this iteration
+                            Trace.Info($"Uploaded unfinished log '{logFile}' for current job. Time took: {stopwatch.ElapsedMilliseconds} ms.");
+
+                            // Delete the file after upload
                             IOUtil.DeleteFile(logFile);
                         }
+
                     }
 
                     if (updatedRecords.Count > 0)
