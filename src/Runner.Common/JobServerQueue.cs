@@ -32,8 +32,8 @@ namespace GitHub.Runner.Common
         private static readonly TimeSpan _aggressiveDelayForWebConsoleLineDequeue = TimeSpan.FromMilliseconds(2500);
         private static readonly TimeSpan _delayForWebConsoleLineDequeue = TimeSpan.FromMilliseconds(5000);
         private static readonly TimeSpan _delayForTimelineUpdateDequeue = TimeSpan.FromMilliseconds(5000);
-        private static readonly TimeSpan _delayForFileUploadDequeue = TimeSpan.FromMilliseconds(1000);
-        private static readonly TimeSpan _delayForResultsUploadDequeue = TimeSpan.FromMilliseconds(1000);
+        private static readonly TimeSpan _delayForFileUploadDequeue = TimeSpan.FromMilliseconds(5000);
+        private static readonly TimeSpan _delayForResultsUploadDequeue = TimeSpan.FromMilliseconds(5000);
 
         // Job message information
         private Guid _scopeIdentifier;
